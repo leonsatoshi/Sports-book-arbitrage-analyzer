@@ -3,43 +3,61 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Sports Arbitrage Analyzer - WORKING!</title>
+    <title>Sports Arbitrage Analyzer - Live Data</title>
     <style>
-        body {
+        * {
             margin: 0;
             padding: 0;
+            box-sizing: border-box;
+        }
+        body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             color: white;
             min-height: 100vh;
+            padding: 20px;
         }
         .container {
             max-width: 1400px;
             margin: 0 auto;
-            padding: 20px;
         }
         h1 {
-            font-size: 3rem;
+            font-size: 2.5rem;
             margin: 20px 0;
             text-align: center;
             text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
         }
-        .subtitle {
-            text-align: center;
-            font-size: 1.2rem;
-            margin-bottom: 30px;
-            opacity: 0.9;
+        .api-setup {
+            background: rgba(255,255,255,0.15);
+            backdrop-filter: blur(10px);
+            border-radius: 15px;
+            padding: 25px;
+            margin: 20px 0;
+            border: 2px solid rgba(255,255,255,0.3);
         }
-        .controls {
-            text-align: center;
-            margin: 30px 0;
+        .api-setup.hidden {
+            display: none;
+        }
+        .api-input-group {
+            display: flex;
+            gap: 10px;
+            margin-top: 15px;
+            flex-wrap: wrap;
+        }
+        input[type="text"] {
+            flex: 1;
+            min-width: 250px;
+            padding: 12px;
+            border-radius: 8px;
+            border: none;
+            font-size: 1rem;
         }
         button {
             background: white;
             color: #667eea;
             border: none;
-            padding: 15px 30px;
-            font-size: 1.1rem;
+            padding: 12px 30px;
+            font-size: 1rem;
             border-radius: 50px;
             cursor: pointer;
             font-weight: bold;
@@ -54,6 +72,13 @@
             opacity: 0.6;
             cursor: not-allowed;
         }
+        .controls {
+            display: flex;
+            gap: 15px;
+            margin: 20px 0;
+            flex-wrap: wrap;
+            align-items: center;
+        }
         .filters {
             background: rgba(255,255,255,0.1);
             backdrop-filter: blur(10px);
@@ -63,13 +88,9 @@
             border: 1px solid rgba(255,255,255,0.2);
         }
         .filter-row {
-            display: flex;
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
             gap: 20px;
-            flex-wrap: wrap;
-        }
-        .filter-item {
-            flex: 1;
-            min-width: 200px;
         }
         .filter-item label {
             display: block;
@@ -83,11 +104,10 @@
             border-radius: 8px;
             border: none;
             font-size: 1rem;
-            background: rgba(255,255,255,0.9);
         }
         .stats {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
             gap: 20px;
             margin: 30px 0;
         }
@@ -121,7 +141,6 @@
         .opportunity:hover {
             transform: translateY(-5px);
             box-shadow: 0 10px 30px rgba(0,0,0,0.3);
-            border-color: rgba(255,255,255,0.4);
         }
         .opp-header {
             display: flex;
@@ -143,13 +162,6 @@
         .matchup {
             font-size: 1.5rem;
             font-weight: bold;
-        }
-        .profit-box {
-            text-align: right;
-        }
-        .profit-box .label {
-            font-size: 0.85rem;
-            opacity: 0.8;
         }
         .profit-box .value {
             font-size: 2rem;
@@ -173,20 +185,15 @@
         .bet.blue {
             border-left-color: #60a5fa;
         }
-        .bet-label {
-            font-size: 0.75rem;
-            opacity: 0.7;
-            margin-bottom: 5px;
-        }
         .bet-team {
             font-size: 1.3rem;
             font-weight: bold;
-            margin-bottom: 15px;
+            margin: 10px 0;
         }
         .bet-info {
             display: flex;
             justify-content: space-between;
-            margin-bottom: 10px;
+            margin: 10px 0;
         }
         .bet-odds {
             font-weight: bold;
@@ -198,11 +205,7 @@
         .bet.blue .bet-odds {
             color: #60a5fa;
         }
-        .bet-stake {
-            font-size: 0.9rem;
-            opacity: 0.8;
-        }
-        .loading, .empty {
+        .loading, .empty, .error {
             text-align: center;
             padding: 60px 20px;
             background: rgba(255,255,255,0.1);
@@ -210,8 +213,9 @@
             border-radius: 15px;
             border: 1px solid rgba(255,255,255,0.2);
         }
-        .loading {
-            font-size: 1.3rem;
+        .error {
+            border-color: rgba(239, 68, 68, 0.5);
+            background: rgba(239, 68, 68, 0.1);
         }
         .spinner {
             width: 50px;
@@ -225,50 +229,60 @@
         @keyframes spin {
             to { transform: rotate(360deg); }
         }
-        .disclaimer {
-            background: rgba(251, 191, 36, 0.2);
-            border: 2px solid rgba(251, 191, 36, 0.5);
+        .info-box {
+            background: rgba(59, 130, 246, 0.2);
+            border: 2px solid rgba(59, 130, 246, 0.5);
             border-radius: 12px;
             padding: 20px;
-            margin: 30px 0;
+            margin: 20px 0;
         }
-        .disclaimer strong {
-            color: #fbbf24;
-        }
-        .update-time {
-            text-align: center;
-            opacity: 0.7;
-            margin: 10px 0;
+        .info-box a {
+            color: #93c5fd;
+            text-decoration: underline;
         }
         @media (max-width: 768px) {
             h1 { font-size: 2rem; }
-            .opp-header { flex-direction: column; }
-            .profit-box { text-align: left; }
         }
     </style>
 </head>
 <body>
     <div class="container">
-        <h1>⚡ Sports Arbitrage Analyzer</h1>
-        <div class="subtitle">Find guaranteed profit opportunities across major sportsbooks</div>
+        <h1>⚡ Sports Arbitrage Analyzer - LIVE DATA</h1>
         
-        <div class="controls">
-            <button id="refreshBtn" onclick="loadData()">🔄 Refresh Odds</button>
+        <!-- API Setup Section -->
+        <div class="api-setup" id="apiSetup">
+            <h2>🔑 API Configuration</h2>
+            <p style="margin: 15px 0; opacity: 0.9;">
+                Enter your API key from <a href="https://the-odds-api.com/" target="_blank" style="color: white; text-decoration: underline;">The Odds API</a> (Free: 500 requests/month)
+            </p>
+            <div class="api-input-group">
+                <input type="text" id="apiKeyInput" placeholder="Enter your API key (e.g., a1b2c3d4e5f6...)" />
+                <button onclick="saveApiKey()">Save API Key</button>
+            </div>
+            <p style="margin-top: 10px; font-size: 0.9rem; opacity: 0.8;">
+                Don't have a key? Get one free at <a href="https://the-odds-api.com/" target="_blank" style="color: white;">the-odds-api.com</a>
+            </p>
+        </div>
+
+        <!-- Demo Mode Notice -->
+        <div class="info-box" id="demoNotice" style="display: none;">
+            <strong>🎮 Demo Mode:</strong> Using simulated data. Add your API key above to use real-time odds from sportsbooks.
         </div>
         
-        <div class="update-time" id="updateTime"></div>
+        <!-- Main Controls -->
+        <div class="controls">
+            <button id="refreshBtn" onclick="loadData()">🔄 Refresh Odds</button>
+            <button onclick="showApiSetup()">⚙️ API Settings</button>
+            <span id="updateTime" style="opacity: 0.8;"></span>
+        </div>
         
+        <!-- Filters -->
         <div class="filters">
             <div class="filter-row">
                 <div class="filter-item">
                     <label>Sport</label>
                     <select id="sportFilter" onchange="applyFilters()">
                         <option value="all">All Sports</option>
-                        <option value="NFL">NFL</option>
-                        <option value="NBA">NBA</option>
-                        <option value="MLB">MLB</option>
-                        <option value="NHL">NHL</option>
-                        <option value="Soccer">Soccer</option>
                     </select>
                 </div>
                 <div class="filter-item">
@@ -278,9 +292,10 @@
             </div>
         </div>
         
+        <!-- Stats -->
         <div class="stats">
             <div class="stat-box">
-                <h3>Total Opportunities</h3>
+                <h3>Opportunities</h3>
                 <div class="number" id="totalCount">0</div>
             </div>
             <div class="stat-box">
@@ -288,80 +303,268 @@
                 <div class="number" id="bestMargin" style="color: #4ade80;">0%</div>
             </div>
             <div class="stat-box">
-                <h3>Average Margin</h3>
+                <h3>Avg Margin</h3>
                 <div class="number" id="avgMargin" style="color: #fbbf24;">0%</div>
+            </div>
+            <div class="stat-box">
+                <h3>API Requests</h3>
+                <div class="number" id="apiRequests" style="color: #60a5fa;">0</div>
             </div>
         </div>
         
+        <!-- Results -->
         <div id="results"></div>
-        
-        <div class="disclaimer">
-            <strong>⚠️ Disclaimer:</strong> This is a demonstration using simulated data. Always verify odds before placing real bets. Gambling involves risk - bet responsibly.
-        </div>
     </div>
 
     <script>
-        console.log('✅ JavaScript is running!');
-        
         let allData = [];
-        const books = ['DraftKings', 'FanDuel', 'BetMGM', 'Caesars', 'BetRivers'];
-        
-        function generateData() {
-            console.log('📊 Generating mock data...');
-            const sports = ['NFL', 'NBA', 'MLB', 'NHL', 'Soccer'];
-            const teams = {
-                NFL: [['Chiefs', 'Bills'], ['49ers', 'Eagles'], ['Cowboys', 'Packers'], ['Ravens', 'Bengals']],
-                NBA: [['Lakers', 'Celtics'], ['Warriors', 'Nets'], ['Bucks', 'Heat'], ['Nuggets', 'Suns']],
-                MLB: [['Yankees', 'Red Sox'], ['Dodgers', 'Giants'], ['Astros', 'Rangers'], ['Braves', 'Mets']],
-                NHL: [['Bruins', 'Maple Leafs'], ['Avalanche', 'Golden Knights'], ['Panthers', 'Lightning'], ['Oilers', 'Kings']],
-                Soccer: [['Man City', 'Arsenal'], ['Real Madrid', 'Barcelona'], ['Bayern', 'Dortmund'], ['PSG', 'Marseille']]
-            };
+        let apiKey = localStorage.getItem('oddsApiKey') || '';
+        let requestCount = parseInt(localStorage.getItem('requestCount') || '0');
+        let isDemo = !apiKey;
+
+        // Sport configurations for The Odds API
+        const sports = {
+            'americanfootball_nfl': { name: 'NFL', display: 'NFL' },
+            'basketball_nba': { name: 'NBA', display: 'NBA' },
+            'baseball_mlb': { name: 'MLB', display: 'MLB' },
+            'icehockey_nhl': { name: 'NHL', display: 'NHL' },
+            'soccer_epl': { name: 'Soccer', display: 'Premier League' },
+            'soccer_spain_la_liga': { name: 'Soccer', display: 'La Liga' }
+        };
+
+        // Initialize
+        window.onload = function() {
+            if (apiKey) {
+                document.getElementById('apiSetup').classList.add('hidden');
+                populateSportFilter();
+                loadData();
+            } else {
+                document.getElementById('demoNotice').style.display = 'block';
+                populateSportFilter();
+                loadDemoData();
+            }
+            document.getElementById('apiRequests').textContent = requestCount;
+        };
+
+        function populateSportFilter() {
+            const select = document.getElementById('sportFilter');
+            select.innerHTML = '<option value="all">All Sports</option>';
             
+            const sportSet = new Set();
+            Object.values(sports).forEach(s => sportSet.add(s.name));
+            sportSet.forEach(sport => {
+                select.innerHTML += `<option value="${sport}">${sport}</option>`;
+            });
+        }
+
+        function saveApiKey() {
+            const key = document.getElementById('apiKeyInput').value.trim();
+            if (!key) {
+                alert('Please enter an API key');
+                return;
+            }
+            
+            localStorage.setItem('oddsApiKey', key);
+            apiKey = key;
+            isDemo = false;
+            document.getElementById('apiSetup').classList.add('hidden');
+            document.getElementById('demoNotice').style.display = 'none';
+            alert('API key saved! Loading live data...');
+            loadData();
+        }
+
+        function showApiSetup() {
+            const setup = document.getElementById('apiSetup');
+            setup.classList.toggle('hidden');
+            if (!setup.classList.contains('hidden')) {
+                document.getElementById('apiKeyInput').value = apiKey;
+            }
+        }
+
+        async function loadData() {
+            if (isDemo) {
+                loadDemoData();
+                return;
+            }
+
+            const btn = document.getElementById('refreshBtn');
+            const results = document.getElementById('results');
+            
+            btn.disabled = true;
+            btn.textContent = '⏳ Loading...';
+            results.innerHTML = '<div class="loading"><div class="spinner"></div><div>Fetching live odds from sportsbooks...</div></div>';
+
+            try {
+                const allOdds = [];
+                
+                // Fetch odds for each sport
+                for (const [sportKey, sportInfo] of Object.entries(sports)) {
+                    const url = `https://api.the-odds-api.com/v4/sports/${sportKey}/odds/?apiKey=${apiKey}&regions=us&markets=h2h&oddsFormat=american`;
+                    
+                    try {
+                        const response = await fetch(url);
+                        
+                        if (!response.ok) {
+                            if (response.status === 401) {
+                                throw new Error('Invalid API key. Please check your key and try again.');
+                            }
+                            throw new Error(`API error: ${response.status}`);
+                        }
+
+                        const data = await response.json();
+                        requestCount++;
+                        localStorage.setItem('requestCount', requestCount.toString());
+                        document.getElementById('apiRequests').textContent = requestCount;
+
+                        // Process the data
+                        data.forEach(game => {
+                            if (game.bookmakers && game.bookmakers.length >= 2) {
+                                const processedGame = {
+                                    sport: sportInfo.name,
+                                    league: sportInfo.display,
+                                    team1: game.home_team,
+                                    team2: game.away_team,
+                                    commence_time: game.commence_time,
+                                    bookmakers: {}
+                                };
+
+                                game.bookmakers.forEach(bookmaker => {
+                                    const h2hMarket = bookmaker.markets.find(m => m.key === 'h2h');
+                                    if (h2hMarket && h2hMarket.outcomes.length === 2) {
+                                        const outcome1 = h2hMarket.outcomes.find(o => o.name === game.home_team);
+                                        const outcome2 = h2hMarket.outcomes.find(o => o.name === game.away_team);
+                                        
+                                        if (outcome1 && outcome2) {
+                                            processedGame.bookmakers[bookmaker.title] = {
+                                                team1: outcome1.price,
+                                                team2: outcome2.price
+                                            };
+                                        }
+                                    }
+                                });
+
+                                if (Object.keys(processedGame.bookmakers).length >= 2) {
+                                    allOdds.push(processedGame);
+                                }
+                            }
+                        });
+                    } catch (err) {
+                        console.error(`Error fetching ${sportKey}:`, err);
+                    }
+                }
+
+                if (allOdds.length === 0) {
+                    throw new Error('No games found. Try again later or check if games are scheduled.');
+                }
+
+                allData = findArbitrageOpportunities(allOdds);
+                document.getElementById('updateTime').textContent = 
+                    `Last updated: ${new Date().toLocaleTimeString()} | Requests used: ${requestCount}/500`;
+                
+                applyFilters();
+            } catch (error) {
+                results.innerHTML = `
+                    <div class="error">
+                        <h2>❌ Error Loading Data</h2>
+                        <p>${error.message}</p>
+                        <p style="margin-top: 15px;">
+                            <button onclick="showApiSetup()">Check API Key</button>
+                            <button onclick="useDemoMode()">Use Demo Mode</button>
+                        </p>
+                    </div>
+                `;
+            } finally {
+                btn.disabled = false;
+                btn.textContent = '🔄 Refresh Odds';
+            }
+        }
+
+        function useDemoMode() {
+            isDemo = true;
+            document.getElementById('demoNotice').style.display = 'block';
+            loadDemoData();
+        }
+
+        function loadDemoData() {
+            const btn = document.getElementById('refreshBtn');
+            const results = document.getElementById('results');
+            
+            btn.disabled = true;
+            results.innerHTML = '<div class="loading"><div class="spinner"></div><div>Generating demo data...</div></div>';
+
+            setTimeout(() => {
+                const games = generateDemoData();
+                allData = findArbitrageOpportunities(games);
+                document.getElementById('updateTime').textContent = 
+                    `Demo Mode - Last updated: ${new Date().toLocaleTimeString()}`;
+                btn.disabled = false;
+                applyFilters();
+            }, 1000);
+        }
+
+        function generateDemoData() {
+            const demoTeams = {
+                NFL: [['Chiefs', 'Bills'], ['49ers', 'Eagles'], ['Cowboys', 'Packers']],
+                NBA: [['Lakers', 'Celtics'], ['Warriors', 'Nets'], ['Bucks', 'Heat']],
+                MLB: [['Yankees', 'Red Sox'], ['Dodgers', 'Giants'], ['Astros', 'Rangers']],
+                NHL: [['Bruins', 'Maple Leafs'], ['Avalanche', 'Golden Knights']],
+                Soccer: [['Man City', 'Arsenal'], ['Real Madrid', 'Barcelona']]
+            };
+
+            const demoBooks = ['DraftKings', 'FanDuel', 'BetMGM', 'Caesars', 'BetRivers'];
             const games = [];
-            sports.forEach(sport => {
-                teams[sport].forEach(match => {
-                    const game = { sport, team1: match[0], team2: match[1], odds: {} };
-                    books.forEach(book => {
-                        game.odds[book] = {
+
+            Object.entries(demoTeams).forEach(([sport, matches]) => {
+                matches.forEach(match => {
+                    const game = {
+                        sport,
+                        league: sport,
+                        team1: match[0],
+                        team2: match[1],
+                        bookmakers: {}
+                    };
+
+                    demoBooks.forEach(book => {
+                        game.bookmakers[book] = {
                             team1: Math.round(-110 + Math.random() * 40 - 20),
                             team2: Math.round(-110 + Math.random() * 40 - 20)
                         };
                     });
+
                     games.push(game);
                 });
             });
-            
-            console.log(`✅ Generated ${games.length} games`);
+
             return games;
         }
-        
+
         function toDecimal(american) {
             return american > 0 ? (american / 100) + 1 : (100 / Math.abs(american)) + 1;
         }
-        
-        function findArbs(games) {
-            console.log('🔍 Finding arbitrage opportunities...');
+
+        function findArbitrageOpportunities(games) {
             const arbs = [];
-            
+
             games.forEach(game => {
-                let best1 = { odds: -999, book: '', dec: 0 };
-                let best2 = { odds: -999, book: '', dec: 0 };
-                
-                Object.entries(game.odds).forEach(([book, odds]) => {
+                let best1 = { odds: -9999, book: '', dec: 0 };
+                let best2 = { odds: -9999, book: '', dec: 0 };
+
+                Object.entries(game.bookmakers).forEach(([book, odds]) => {
                     const d1 = toDecimal(odds.team1);
                     const d2 = toDecimal(odds.team2);
                     if (d1 > best1.dec) best1 = { odds: odds.team1, book, dec: d1 };
                     if (d2 > best2.dec) best2 = { odds: odds.team2, book, dec: d2 };
                 });
-                
+
                 const prob1 = 1 / best1.dec;
                 const prob2 = 1 / best2.dec;
                 const total = prob1 + prob2;
-                
+
                 if (total < 1) {
                     const margin = ((1 / total) - 1) * 100;
                     arbs.push({
                         sport: game.sport,
+                        league: game.league,
                         matchup: `${game.team1} vs ${game.team2}`,
                         bet1: {
                             team: game.team1,
@@ -379,47 +582,24 @@
                     });
                 }
             });
-            
-            arbs.sort((a, b) => parseFloat(b.margin) - parseFloat(a.margin));
-            console.log(`✅ Found ${arbs.length} arbitrage opportunities`);
-            return arbs;
+
+            return arbs.sort((a, b) => parseFloat(b.margin) - parseFloat(a.margin));
         }
-        
-        function loadData() {
-            console.log('🔄 Loading data...');
-            const btn = document.getElementById('refreshBtn');
-            const results = document.getElementById('results');
-            
-            btn.disabled = true;
-            btn.textContent = '⏳ Loading...';
-            results.innerHTML = '<div class="loading"><div class="spinner"></div><div>Analyzing odds...</div></div>';
-            
-            setTimeout(() => {
-                const games = generateData();
-                allData = findArbs(games);
-                document.getElementById('updateTime').textContent = 
-                    `Last updated: ${new Date().toLocaleTimeString()}`;
-                btn.disabled = false;
-                btn.textContent = '🔄 Refresh Odds';
-                applyFilters();
-            }, 1500);
-        }
-        
+
         function applyFilters() {
-            console.log('🎯 Applying filters...');
             const sport = document.getElementById('sportFilter').value;
             const minProfit = parseFloat(document.getElementById('profitFilter').value) || 0;
-            
+
             const filtered = allData.filter(item => {
                 if (sport !== 'all' && item.sport !== sport) return false;
                 if (parseFloat(item.margin) < minProfit) return false;
                 return true;
             });
-            
+
             updateStats(filtered);
-            display(filtered);
+            displayOpportunities(filtered);
         }
-        
+
         function updateStats(data) {
             document.getElementById('totalCount').textContent = data.length;
             if (data.length > 0) {
@@ -431,65 +611,59 @@
                 document.getElementById('avgMargin').textContent = '0%';
             }
         }
-        
+
         function formatOdds(odds) {
             return odds > 0 ? `+${odds}` : odds;
         }
-        
-        function display(data) {
+
+        function displayOpportunities(data) {
             const results = document.getElementById('results');
-            
+
             if (data.length === 0) {
                 results.innerHTML = `
                     <div class="empty">
-                        <h2>⚠️ No Opportunities Found</h2>
-                        <p>Try adjusting your filters or refresh to check again</p>
+                        <h2>⚠️ No Arbitrage Opportunities</h2>
+                        <p>No profitable arbitrage found with current filters. Try adjusting your minimum profit margin.</p>
                     </div>
                 `;
                 return;
             }
-            
+
             results.innerHTML = data.map(opp => `
                 <div class="opportunity">
                     <div class="opp-header">
                         <div>
-                            <div class="sport-tag">${opp.sport}</div>
+                            <div class="sport-tag">${opp.league || opp.sport}</div>
                             <div class="matchup">${opp.matchup}</div>
                         </div>
                         <div class="profit-box">
-                            <div class="label">Profit Margin</div>
+                            <div style="font-size: 0.85rem; opacity: 0.8;">Profit Margin</div>
                             <div class="value">${opp.margin}%</div>
                         </div>
                     </div>
                     <div class="bets-grid">
                         <div class="bet green">
-                            <div class="bet-label">BET 1</div>
+                            <div style="font-size: 0.75rem; opacity: 0.7;">BET 1</div>
                             <div class="bet-team">${opp.bet1.team}</div>
                             <div class="bet-info">
                                 <span>${opp.bet1.book}</span>
                                 <span class="bet-odds">${formatOdds(opp.bet1.odds)}</span>
                             </div>
-                            <div class="bet-stake">Stake: ${opp.bet1.stake}% of bankroll</div>
+                            <div style="font-size: 0.9rem; opacity: 0.8;">Stake: ${opp.bet1.stake}% of bankroll</div>
                         </div>
                         <div class="bet blue">
-                            <div class="bet-label">BET 2</div>
+                            <div style="font-size: 0.75rem; opacity: 0.7;">BET 2</div>
                             <div class="bet-team">${opp.bet2.team}</div>
                             <div class="bet-info">
                                 <span>${opp.bet2.book}</span>
                                 <span class="bet-odds">${formatOdds(opp.bet2.odds)}</span>
                             </div>
-                            <div class="bet-stake">Stake: ${opp.bet2.stake}% of bankroll</div>
+                            <div style="font-size: 0.9rem; opacity: 0.8;">Stake: ${opp.bet2.stake}% of bankroll</div>
                         </div>
                     </div>
                 </div>
             `).join('');
-            
-            console.log(`✅ Displayed ${data.length} opportunities`);
         }
-        
-        // Auto-load on page ready
-        console.log('🚀 Page loaded, starting...');
-        loadData();
     </script>
 </body>
 </html>
